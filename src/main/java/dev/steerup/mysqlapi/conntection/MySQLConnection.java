@@ -70,12 +70,7 @@ public class MySQLConnection {
     }
 
     public interface StatementPreparation {
-        static StatementPreparation EMPTY = new StatementPreparation() {
-            @Override
-            public void prepare(PreparedStatement preparedStatement) throws SQLException {
-
-            }
-        };
+        static StatementPreparation EMPTY = preparedStatement -> {};
 
         static StatementPreparation empty() {
             return EMPTY;
