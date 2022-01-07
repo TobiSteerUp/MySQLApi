@@ -17,7 +17,7 @@ public class MySQLApi {
 
     public static MySQLConnection createConnection(String host, String port, String database, String user, String password) {
         MysqlDataSource source = new MysqlDataSource();
-        source.setUrl("jdbc:mysql://" + host + "/" + database + OPTIONS);
+        source.setUrl("jdbc:mysql://" + host + ":" + port + "/" + database + OPTIONS);
         try {
             final Connection connection = source.getConnection(user, password);
             return new MySQLConnection(connection);
