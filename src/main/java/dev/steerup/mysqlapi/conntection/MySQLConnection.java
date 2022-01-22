@@ -47,30 +47,36 @@ public class MySQLConnection {
         return list;
     }
 
-    public void consume(String statementString, StatementPreparation statementPreparationConsumer, ResultSetConsumer resultSetConsumer) {
-        try (PreparedStatement preparedStatement = this.connection.prepareStatement(statementString)){
-            statementPreparationConsumer.prepare(preparedStatement);
-
+    public void consume(String statementString, StatementPreparation statementPreparation, ResultSetConsumer resultSetConsumer) {
+        this.prepare(statementString, statementPreparation, preparedStatement -> {
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 resultSetConsumer.consume(resultSet);
             }
-        } catch (SQLException exception) {
-            exception.printStackTrace();
-        }
+        });
     }
 
-    public void execute(String statementString, StatementPreparation statementPreparationConsumer) {
-        try (PreparedStatement preparedStatement = this.connection.prepareStatement(statementString)) {
-            statementPreparationConsumer.prepare(preparedStatement);
+    public void execute(String statementString, StatementPreparation statementPreparation) {
+        this.prepare(statementString, statementPreparation, PreparedStatement::execute);
+    }
 
-            preparedStatement.execute();
+    public void prepare(String statementString, StatementPreparation statementPreparation, StatementPreparation postStatementPreparation) {
+        this.prepare(statementString, preparedStatement -> {
+            statementPreparation.prepare(preparedStatement);
+            postStatementPreparation.prepare(preparedStatement);
+        });
+    }
+
+    public void prepare(String statementString, StatementPreparation statementPreparation) {
+        try (PreparedStatement preparedStatement = this.connection.prepareStatement(statementString)) {
+            statementPreparation.prepare(preparedStatement);
         } catch (SQLException exception) {
             exception.printStackTrace();
         }
     }
 
     public interface StatementPreparation {
-        static StatementPreparation EMPTY = preparedStatement -> {};
+        static StatementPreparation EMPTY = preparedStatement -> {
+        };
 
         static StatementPreparation empty() {
             return EMPTY;

@@ -15,7 +15,7 @@ public class MySQLApi {
 
     private static final String OPTIONS = "?jdbcCompliantTruncation=false&autoReconnect=true&zeroDateTimeBehavior=convertToNull&max_allowed_packet=512M";
 
-    public static MySQLConnection createConnection(String host, String port, String database, String user, String password) {
+    public static MySQLConnection createConnection(String host, int port, String database, String user, String password) {
         MysqlDataSource source = new MysqlDataSource();
         source.setUrl("jdbc:mysql://" + host + ":" + port + "/" + database + OPTIONS);
         try {
