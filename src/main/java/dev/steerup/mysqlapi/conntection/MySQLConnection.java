@@ -6,6 +6,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * @author Txb1 at 07.01.2022
@@ -59,6 +61,21 @@ public class MySQLConnection {
         this.prepare(statementString, statementPreparation, PreparedStatement::execute);
     }
 
+    public <T> void executeBatch(String statementString, Stream<T> stream, StatementStreamPreparation<T> statementStreamPreparation) {
+        this.prepare(statementString, preparedStatement -> {
+            stream.forEach(entry -> {
+                try {
+                    statementStreamPreparation.prepare(entry, preparedStatement);
+                    preparedStatement.addBatch();
+                    preparedStatement.clearParameters();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            });
+            preparedStatement.executeBatch();
+        });
+    }
+
     public void prepare(String statementString, StatementPreparation statementPreparation, StatementPreparation postStatementPreparation) {
         this.prepare(statementString, preparedStatement -> {
             statementPreparation.prepare(preparedStatement);
@@ -83,6 +100,10 @@ public class MySQLConnection {
         }
 
         void prepare(PreparedStatement preparedStatement) throws SQLException;
+    }
+
+    public interface StatementStreamPreparation<T> {
+        void prepare(T t, PreparedStatement preparedStatement) throws SQLException;
     }
 
     public interface ResultSetConsumer {
