@@ -1,12 +1,14 @@
 package dev.steerup.mysqlapi.conntection;
 
+import dev.steerup.mysqlapi.MySQLApi;
+import dev.steerup.mysqlapi.model.MySQLInfo;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
 /**
@@ -16,10 +18,26 @@ import java.util.stream.Stream;
 
 public class MySQLConnection {
 
-    private final Connection connection;
+    private Connection connection;
+    private final MySQLInfo info;
 
-    public MySQLConnection(Connection connection) {
-        this.connection = connection;
+    public MySQLConnection(MySQLInfo info) {
+        this.info = info;
+    }
+
+    public MySQLConnection openConnection() {
+        this.connection = MySQLApi.openConnection(this.info);
+        return this;
+    }
+
+    private void reopenConnectionIfNeeded() {
+        try {
+            if (connection.isClosed()) {
+                this.openConnection();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void consumeDirect(String statementString, ResultSetConsumer resultSetConsumer) {
@@ -68,8 +86,8 @@ public class MySQLConnection {
                     statementStreamPreparation.prepare(entry, preparedStatement);
                     preparedStatement.addBatch();
                     preparedStatement.clearParameters();
-                } catch (SQLException e) {
-                    e.printStackTrace();
+                } catch (Throwable exception) {
+                    exception.printStackTrace();
                 }
             });
             preparedStatement.executeBatch();
@@ -84,15 +102,31 @@ public class MySQLConnection {
     }
 
     public void prepare(String statementString, StatementPreparation statementPreparation) {
+        this.reopenConnectionIfNeeded();
         try (PreparedStatement preparedStatement = this.connection.prepareStatement(statementString)) {
             statementPreparation.prepare(preparedStatement);
-        } catch (SQLException exception) {
+        } catch (Throwable exception) {
             exception.printStackTrace();
         }
     }
 
+    public void consumeInConstruction(String statementString, List<String> clauses, ResultSetConsumer resultSetConsumer) {
+        this.reopenConnectionIfNeeded();
+        StringBuilder in = new StringBuilder();
+
+        for (String clause : clauses) {
+            if (!in.toString().equals("")) {
+                in.append(", ");
+            }
+            in.append("'").append(clause.replaceAll("'", "''").replaceAll("\"", "\"\"")).append("'");
+        }
+
+        String replace = statementString.replace("?", in.toString());
+        consumeDirect(replace, resultSetConsumer);
+    }
+
     public interface StatementPreparation {
-        static StatementPreparation EMPTY = preparedStatement -> {
+        StatementPreparation EMPTY = preparedStatement -> {
         };
 
         static StatementPreparation empty() {
